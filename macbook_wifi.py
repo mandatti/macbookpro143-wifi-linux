@@ -16,7 +16,7 @@ import tempfile
 import time
 import urllib.request
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 UPSTREAM_URL = "https://gist.githubusercontent.com/MikeRatcliffe/9614c16a8ea09731a9d5e91685bd8c80/raw/bd7af7c6f01df3ccee1471d36cb8df15d618a6aa/brcmfmac43602-pcie.txt"
 UPSTREAM_SHA256 = "b109f3e6663b0e888c2559e36f7e0109f2a3a6b9765786d11f849f16d4b32d06"
 STATE_DIR = Path("/var/lib/macbookpro143-wifi")
@@ -41,7 +41,7 @@ def hardware():
     vendor = read("/sys/class/dmi/id/sys_vendor")
     if model != MODEL:
         raise ValueError(f"Supported model is {MODEL}; detected {model}.")
-    if not re.fullmatch(r"[A-Za-z0-9 .,()_-]{1,80}", vendor):
+    if vendor not in {"Apple Inc.", "Acidanthera"}:
         raise ValueError("Unsupported DMI vendor name.")
     matches = []
     for dev in Path("/sys/bus/pci/devices").iterdir():
@@ -127,8 +127,11 @@ def render_nvram(source, country, mac):
 
 
 def paths(hw):
-    board = f"brcmfmac43602-pcie.{hw['vendor']}-{hw['model']}.txt"
-    return [Path("/usr/lib/firmware/brcm") / board,
+    # The same Mac can expose either vendor depending on its boot path.
+    boards = [Path("/usr/lib/firmware/brcm") /
+              f"brcmfmac43602-pcie.{vendor}-{MODEL}.txt"
+              for vendor in ("Apple Inc.", "Acidanthera")]
+    return boards + [
             Path("/etc/modprobe.d/macbookpro143-wifi.conf"),
             Path("/etc/NetworkManager/conf.d/80-macbookpro143-wifi.conf")]
 
@@ -179,7 +182,9 @@ def digest(path):
 def install_files(mapping, previous, metadata):
     # Preserve the first pre-installation snapshot across repeat installations.
     before = {str(p): snapshot(p) for p in mapping}
-    original = previous["original"] if previous else before
+    original = dict(before)
+    if previous:
+        original.update(previous["original"])
     state_before = snapshot(STATE_FILE)
     state = dict(metadata, original=original,
                  installed={str(p): hashlib.sha256(data).hexdigest()
@@ -216,8 +221,13 @@ def uninstall_files(state):
 
 def validate_state(state, hw):
     expected = {str(p) for p in paths(hw)}
-    if (state.get("model") != MODEL or set(state.get("original", {})) != expected
-            or set(state.get("installed", {})) != expected):
+    actual = set(state.get("installed", {}))
+    config_paths = {str(p) for p in paths(hw)[-2:]}
+    # Accept v0.1.0's single-vendor layout for upgrade/uninstall after a reboot.
+    valid_layout = (actual == expected or
+                    (config_paths <= actual <= expected and len(actual) == 3))
+    if (state.get("model") != MODEL or not valid_layout
+            or set(state.get("original", {})) != actual):
         raise ValueError("Installed state does not match this machine and supported paths.")
 
 
@@ -354,7 +364,7 @@ def main(argv=None):
             nm = ("# Managed by macbookpro143-wifi\n[connection-macbookpro143-wifi]\n"
                   f"match-device=interface-name:{hw['interface']}\n"
                   "wifi.powersave=2\n").encode()
-            install_files(dict(zip(target_paths, (nvram, modprobe, nm))), previous,
+            install_files(dict(zip(target_paths, (nvram, nvram, modprobe, nm))), previous,
                           dict(version=VERSION, model=MODEL, vendor=hw["vendor"],
                                country=country, mac=mac, upstream_sha256=UPSTREAM_SHA256))
             print("Installed. Original files saved privately under " + str(STATE_DIR))

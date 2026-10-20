@@ -49,11 +49,13 @@ EOF_CONTROL
     chmod 644 "$deb/DEBIAN/control"
     dpkg-deb --root-owner-group --build "$deb" "$outdir/macbookpro143-wifi_${version}_all.deb"
 fi
-python3 - "$outdir" <<'PY_SUM'
+python3 - "$outdir" "$version" <<'PY_SUM'
 from pathlib import Path
 import hashlib, sys
 out = Path(sys.argv[1])
-artifacts = sorted(p for p in out.iterdir() if p.name.endswith(('.tar.gz', '.zip', '.deb')))
+version = sys.argv[2]
+names = [f'macbookpro143-wifi-linux-{version}.tar.gz', f'macbookpro143-wifi-linux-{version}.zip', f'macbookpro143-wifi_{version}_all.deb']
+artifacts = [out / name for name in names if (out / name).is_file()]
 (out / 'SHA256SUMS').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in artifacts))
 PY_SUM
 printf 'Artifacts: %s\n' "$outdir"

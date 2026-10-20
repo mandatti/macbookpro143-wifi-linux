@@ -114,6 +114,42 @@ class InstallerTests(unittest.TestCase):
             self.assertNotIn(private, cleaned)
         self.assertIn('-44 dBm', cleaned)
 
+    def test_board_aliases_are_identical_across_both_boot_vendors(self):
+        apple = {'model': wifi.MODEL, 'vendor': 'Apple Inc.', 'interface': 'wlp3s0'}
+        custom = dict(apple, vendor='Acidanthera')
+        self.assertEqual(wifi.paths(apple), wifi.paths(custom))
+        self.assertEqual(len(wifi.paths(apple)), 4)
+        names = [p.name for p in wifi.paths(apple)]
+        self.assertIn('brcmfmac43602-pcie.Apple Inc.-MacBookPro14,3.txt', names)
+        self.assertIn('brcmfmac43602-pcie.Acidanthera-MacBookPro14,3.txt', names)
+
+    def test_legacy_backup_is_valid_after_boot_vendor_changes(self):
+        hw = {'model': wifi.MODEL, 'vendor': 'Apple Inc.', 'interface': 'wlp3s0'}
+        all_paths = wifi.paths(hw)
+        legacy_paths = [all_paths[1], *all_paths[-2:]]
+        state = {'version': '0.1.0', 'model': wifi.MODEL, 'vendor': 'Acidanthera',
+                 'original': {str(p): None for p in legacy_paths},
+                 'installed': {str(p): 'hash' for p in legacy_paths}}
+        wifi.validate_state(state, hw)
+        # Missing a managed config is not a legitimate legacy layout.
+        state['original'].pop(str(all_paths[-1]))
+        state['installed'].pop(str(all_paths[-1]))
+        with self.assertRaises(ValueError):
+            wifi.validate_state(state, hw)
+
+    def test_upgrade_backs_up_new_alias_and_keeps_first_original(self):
+        old_alias, new_alias = self.root / 'old-alias', self.root / 'new-alias'
+        config = self.root / 'config'
+        old_alias.write_bytes(b'pre-v010-old-alias')
+        legacy = wifi.install_files({old_alias: b'v010', config: b'v010-config'}, None, {})
+        new_alias.write_bytes(b'pre-v011-new-alias')
+        upgraded = wifi.install_files({old_alias: b'v011', new_alias: b'v011',
+                                        config: b'v011-config'}, legacy, {})
+        wifi.uninstall_files(upgraded)
+        self.assertEqual(old_alias.read_bytes(), b'pre-v010-old-alias')
+        self.assertEqual(new_alias.read_bytes(), b'pre-v011-new-alias')
+        self.assertFalse(config.exists())
+
     def test_state_path_injection_rejected(self):
         hw = {'model': wifi.MODEL, 'vendor': 'Apple Inc.', 'interface': 'wlan0'}
         state = {'model': wifi.MODEL, 'original': {'/etc/passwd': None}, 'installed': {'/etc/passwd': 'x'}}

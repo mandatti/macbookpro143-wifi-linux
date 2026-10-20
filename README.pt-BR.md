@@ -2,7 +2,7 @@
 
 Ferramenta reversível para a **Broadcom BCM43602 do MacBook Pro de 15 polegadas de 2017**. Usa o driver `brcmfmac` e o firmware já fornecidos pelo Ubuntu, acrescentando uma configuração de placa obtida de uma fonte comunitária com revisão e hash fixados.
 
-**Versão 0.1.0, experimental. Testada em uma única máquina:** MacBookPro14,3, Ubuntu Live 26.04.1 com persistência, kernel 7.0.0-30-generic, Alemanha. Outros modelos e identificadores de placa são recusados. Reinicialização, suspensão e uso prolongado ainda precisam ser verificados.
+**Versão 0.1.1, experimental. Testada em uma única máquina:** MacBookPro14,3, Ubuntu Live 26.04.1 com persistência, kernel 7.0.0-30-generic, Alemanha. Outros modelos e identificadores de placa são recusados. A reinicialização confirmou a persistência dos arquivos, mas revelou uma troca do fabricante DMI de `Acidanthera` para `Apple Inc.`. A versão 0.1.1 instala a configuração nos dois nomes e suporta os backups da versão anterior. A recarga com o novo nome restaurou 5 GHz; uma nova reinicialização com esta correção, suspensão e uso prolongado ainda precisam ser verificados.
 
 No teste, a configuração completa habilitou 5 GHz e elevou o sinal reportado de aproximadamente −80 para −40 a −44 dBm. A taxa de enlace chegou a 300–400 Mb/s; um download externo de 10 MB mediu 77,6 Mb/s. Os 20 pings ao roteador responderam sem perdas. Esses números não garantem o mesmo desempenho em outras máquinas. Não houve download comparável antes da mudança.
 
@@ -45,7 +45,7 @@ O instalador baixa a configuração externa e confere seu SHA-256. Sem internet,
 Instalar o `.deb` somente disponibiliza a ferramenta. A configuração é aplicada explicitamente:
 
 ```bash
-sudo apt install ./macbookpro143-wifi_0.1.0_all.deb
+sudo apt install ./macbookpro143-wifi_0.1.1_all.deb
 sudo macbookpro143-wifi install --country DE --apply
 ```
 

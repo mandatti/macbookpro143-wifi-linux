@@ -4,7 +4,13 @@ A reversible configuration tool for the **Broadcom BCM43602 in the 2017 15-inch 
 
 [Português brasileiro](README.pt-BR.md) · [Technical notes](docs/technical-notes.md) · [Third-party source](THIRD_PARTY.md)
 
-**Version 0.1.0 — experimental, tested on one machine.** This is a community project, unaffiliated with Apple or Broadcom. Other Mac models and PCI subsystem IDs are deliberately rejected. A successful connection is not a claim of support for every kernel, router, or country.
+**Version 0.1.1 — experimental, tested on one machine.** This is a community project, unaffiliated with Apple or Broadcom. Other Mac models and PCI subsystem IDs are deliberately rejected. A successful connection is not a claim of support for every kernel, router, or country.
+
+## Fix in v0.1.1
+
+The DMI vendor on the tested Mac changed from `Acidanthera` to `Apple Inc.` after rebooting. Version 0.1.0 installed the board file under only the current vendor name, so the next boot could fall back to generic defaults. Version 0.1.1 installs both names and can upgrade or uninstall v0.1.0 backups even after that change.
+
+To upgrade an existing tool-managed configuration, run the new installer with the same country. The first pre-installation backups are retained, including the original state of the newly managed alias.
 
 ## What was observed
 
@@ -16,7 +22,7 @@ On one MacBookPro14,3, Ubuntu 26.04.1 Live with persistence and kernel `7.0.0-30
 | Driver-reported signal | approximately −80 dBm | approximately −40 to −44 dBm |
 | Reported link rate | 52–78 Mb/s | 300–400 Mb/s |
 
-After the change, a 10 MB HTTPS sample download measured approximately 77.6 Mb/s. Twenty pings to the local router returned with no loss. Link rates are not internet speed; the download depends on the server and internet connection. No comparable before-change download was recorded. RSSI values also depend on the board configuration. Long-term behavior, suspend/resume, and operation after reboot remain unverified.
+After the change, a 10 MB HTTPS sample download measured approximately 77.6 Mb/s. Twenty pings to the local router returned with no loss. Link rates are not internet speed; the download depends on the server and internet connection. No comparable before-change download was recorded. RSSI values also depend on the board configuration. A reboot confirmed that the files persist, but exposed a vendor-name change that prevented v0.1.0 from loading them. Version 0.1.1 installs both observed vendor names; reloading with the new name restored 5 GHz. A further reboot with this fix, long-term behavior, and suspend/resume remain unverified.
 
 ## Requirements
 
@@ -66,7 +72,7 @@ If reconnection fails, the original files remain backed up. Roll back using the 
 The `.deb` installs the tool only. Installing the `.deb` itself does not download NVRAM, change Wi-Fi configuration, or reload the driver.
 
 ```bash
-sudo apt install ./macbookpro143-wifi_0.1.0_all.deb
+sudo apt install ./macbookpro143-wifi_0.1.1_all.deb
 macbookpro143-wifi install --country DE --dry-run
 sudo macbookpro143-wifi install --country DE --apply
 ```
@@ -107,7 +113,7 @@ Removing the `.deb` does not roll back Wi-Fi settings automatically. Run the too
 
 ## What it changes
 
-1. A board-specific NVRAM text file under `/usr/lib/firmware/brcm/`, using the detected DMI vendor and model.
+1. Two identical board-specific NVRAM text files under `/usr/lib/firmware/brcm/`, for `Apple Inc.-MacBookPro14,3` and `Acidanthera-MacBookPro14,3`. This covers the vendor change observed after rebooting through another boot path.
 2. `/etc/modprobe.d/macbookpro143-wifi.conf`: disables firmware roaming and firmware WPA supplicant; sets the requested regulatory domain.
 3. `/etc/NetworkManager/conf.d/80-macbookpro143-wifi.conf`: disables default power saving for the detected interface. An explicit power-saving setting in an existing profile can override this default.
 4. Private backup/state under `/var/lib/macbookpro143-wifi/`.

@@ -1,6 +1,6 @@
 # Technical notes
 
-The tested machine reports DMI vendor `Acidanthera` (a customized boot environment) and model `MacBookPro14,3`. The installer also accepts a normal vendor such as `Apple Inc.` when the model and the exact Broadcom/Apple PCI identifiers match. Other vendor combinations and kernels remain untested even though the path is generated from their DMI data.
+The tested machine initially reported DMI vendor `Acidanthera` and model `MacBookPro14,3`. After reboot it reported `Apple Inc.` with the same model and PCI IDs. This changed the driver lookup name and caused the v0.1.0 single-vendor board file to be missed. Version 0.1.1 manages both vendor-specific files, accepts both observed DMI vendors, and keeps them identical. Other vendors are rejected. The original v0.1.0 backup layout is accepted for upgrade or uninstall; newly managed files get their own first-installation snapshots.
 
 ## Why a board text file?
 
@@ -34,4 +34,4 @@ Filesystem write failures during installation restore the immediately preceding 
 
 Core tests cover first-install backup preservation across reinstall/uninstall, file-mode restoration, rollback on write failure, rejection of locally edited managed files, symbolic links, wrong hardware model, unexpected source hashes, invalid country codes, state path injection, address generation, and diagnostic redaction.
 
-The tool's dry-run was performed on the working machine. Automated tests use temporary files and mocks; they do not prove hardware behavior. The working system was configured before packaging. The packaged live installer, a clean-system `.deb` install, reboot, suspend/resume, other routers, and other countries still require independent testing.
+The tool's dry-run was performed on the working machine. Automated tests use temporary files and mocks; they do not prove hardware behavior. The working system was configured before packaging. The packaged live installer, a clean-system `.deb` install, a further reboot with the dual-vendor fix, suspend/resume, other routers, and other countries still require independent testing.
